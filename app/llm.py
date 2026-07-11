@@ -108,10 +108,10 @@ class OllamaChat(BaseChat):
                 },
             )
             resp.raise_for_status()
-        except httpx.ConnectError as exc:
+        except httpx.TransportError as exc:
             raise LLMError(
-                f"Cannot reach Ollama at {self._client.base_url}. "
-                "Is Ollama running? (https://ollama.com)"
+                f"Cannot reach Ollama at {self._client.base_url} "
+                f"({type(exc).__name__}). Is Ollama running? (https://ollama.com)"
             ) from exc
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:300]
@@ -140,9 +140,10 @@ class OpenAICompatChat(BaseChat):
                 json={"model": self.model, "messages": messages, "tools": TOOLS},
             )
             resp.raise_for_status()
-        except httpx.ConnectError as exc:
+        except httpx.TransportError as exc:
             raise LLMError(
-                f"Cannot reach the LLM API at {self._client.base_url}."
+                f"Cannot reach the LLM API at {self._client.base_url} "
+                f"({type(exc).__name__})."
             ) from exc
         except httpx.HTTPStatusError as exc:
             detail = exc.response.text[:300]
