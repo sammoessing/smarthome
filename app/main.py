@@ -8,8 +8,8 @@ from pydantic import BaseModel, Field
 
 from .config import settings
 from .connect4 import make_hub
-from .llm import LLMError, OllamaChat
-from .network import WiFiGateMiddleware, wifi_status
+from .llm import LLMError, make_chat
+from .network import WiFiGateMiddleware, effective_client_ip, wifi_status
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -17,7 +17,7 @@ app = FastAPI(title="Connect4 Smart Home Chatbot")
 app.add_middleware(WiFiGateMiddleware, settings=settings)
 
 hub = make_hub(settings.connect4_mode, settings.connect4_hub_url)
-chat = OllamaChat(settings.ollama_url, settings.ollama_model)
+chat = make_chat(settings)
 
 
 class ChatMessage(BaseModel):
@@ -36,12 +36,11 @@ async def index():
 
 @app.get("/api/status")
 async def status(request: Request):
-    client_ip = request.client.host if request.client else None
     return {
         "system": "Connect4",
-        "model": settings.ollama_model,
+        "model": chat.model,
         "hub_mode": settings.connect4_mode,
-        "wifi": wifi_status(settings, client_ip),
+        "wifi": wifi_status(settings, effective_client_ip(request, settings)),
     }
 
 

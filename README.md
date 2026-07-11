@@ -56,6 +56,10 @@ Configuration is via environment variables (see `.env.example`):
 |---|---|---|
 | `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
 | `OLLAMA_MODEL` | `llama3.1` | Open-source model to use (must support tool calling) |
+| `OPENAI_API_KEY` | *(unset)* | If set, use a hosted OpenAI-compatible API instead of Ollama |
+| `OPENAI_BASE_URL` | `https://api.groq.com/openai/v1` | Hosted LLM API base URL (Groq/Together/OpenRouter) |
+| `OPENAI_MODEL` | `llama-3.1-8b-instant` | Hosted open-source model name |
+| `TRUST_PROXY_HEADER` | `false` | Trust `X-Forwarded-For` for the WiFi gate (needed on Vercel) |
 | `ALLOWED_SUBNETS` | private + loopback ranges | Comma-separated CIDRs allowed to use the app |
 | `REQUIRED_SSID` | *(unset)* | If set, the **server** must be connected to this WiFi SSID or all control is disabled |
 | `CONNECT4_MODE` | `simulated` | `simulated` uses the built-in virtual home; `http` proxies to a real Connect4 hub |
@@ -100,6 +104,37 @@ at your hub; `app/connect4.py` documents the small REST contract it expects.
 | `POST /api/chat` | `{"messages": [...]}` → chatbot reply (runs tool calls) |
 | `GET /api/devices` | Current state of every Connect4 device |
 | `GET /api/status` | WiFi-gate status, model, hub mode |
+
+## Deploying to Vercel
+
+The repo is Vercel-ready (`api/index.py` + `vercel.json`). Because Vercel
+can't run Ollama, deployments use a **hosted open-source LLM** through any
+OpenAI-compatible API — Groq's free tier serving Llama 3.1 by default.
+
+1. Get a free API key at [console.groq.com](https://console.groq.com).
+2. Import the repo at [vercel.com/new](https://vercel.com/new) and set these
+   environment variables:
+
+   ```
+   OPENAI_API_KEY=gsk_...            # your Groq key
+   TRUST_PROXY_HEADER=true           # gate on the real caller IP
+   ALLOWED_SUBNETS=<home-ip>/32      # your home's public IP (whatismyip.com)
+   ```
+
+3. Deploy and open the URL — it only responds when you're on your home WiFi.
+
+How the WiFi rule survives the cloud: when you're on your home WiFi, requests
+reach Vercel from your router's **public IP**; setting `ALLOWED_SUBNETS` to
+that IP (a `/32`) means the app only answers devices on your home network,
+same as at home. If your ISP rotates your IP, update the variable (or
+temporarily use `0.0.0.0/0` to allow everywhere — this disables the WiFi
+restriction entirely, so anyone with the URL can control the app; don't
+leave it that way).
+
+Serverless caveats: the simulated home lives in instance memory, so device
+state can reset between requests when Vercel recycles instances — fine for
+trying it out. A real deployment that controls physical devices should run
+at home anyway (`CONNECT4_MODE=http` needs LAN access to the hub).
 
 ## Tests
 

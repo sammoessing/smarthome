@@ -21,6 +21,22 @@ from starlette.responses import JSONResponse
 from .config import Settings
 
 
+def effective_client_ip(request: Request, settings: Settings) -> str:
+    """The IP the WiFi gate should judge.
+
+    Directly on the LAN that's the TCP peer. Behind a trusted reverse proxy
+    (TRUST_PROXY_HEADER=true, e.g. on Vercel) it's the first hop in
+    X-Forwarded-For — the caller's public IP, which equals the home router's
+    public IP exactly when the caller is on the home WiFi.
+    """
+    if settings.trust_proxy_header:
+        forwarded = request.headers.get("x-forwarded-for", "")
+        first = forwarded.split(",")[0].strip()
+        if first:
+            return first
+    return request.client.host if request.client else ""
+
+
 def client_ip_allowed(client_ip: str, settings: Settings) -> bool:
     """True if the client address is inside an allowed (home-network) subnet."""
     try:
@@ -69,7 +85,7 @@ class WiFiGateMiddleware(BaseHTTPMiddleware):
         self.settings = settings
 
     async def dispatch(self, request: Request, call_next):
-        client_ip = request.client.host if request.client else ""
+        client_ip = effective_client_ip(request, self.settings)
         if not client_ip_allowed(client_ip, self.settings):
             return JSONResponse(
                 status_code=403,

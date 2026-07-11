@@ -35,6 +35,27 @@ class Settings:
     required_ssid: str | None = field(
         default_factory=lambda: os.environ.get("REQUIRED_SSID") or None
     )
+    # Behind a reverse proxy / serverless platform (e.g. Vercel), the TCP peer
+    # is the proxy, not the user. Set TRUST_PROXY_HEADER=true there so the
+    # WiFi gate checks the client IP from X-Forwarded-For instead.
+    trust_proxy_header: bool = field(
+        default_factory=lambda: os.environ.get("TRUST_PROXY_HEADER", "").lower()
+        in ("1", "true", "yes")
+    )
+    # Hosted open-source LLM via an OpenAI-compatible API (Groq, Together,
+    # OpenRouter, ...). If OPENAI_API_KEY is set it takes precedence over
+    # local Ollama — needed on serverless hosts that can't run Ollama.
+    openai_api_key: str | None = field(
+        default_factory=lambda: os.environ.get("OPENAI_API_KEY") or None
+    )
+    openai_base_url: str = field(
+        default_factory=lambda: os.environ.get(
+            "OPENAI_BASE_URL", "https://api.groq.com/openai/v1"
+        )
+    )
+    openai_model: str = field(
+        default_factory=lambda: os.environ.get("OPENAI_MODEL", "llama-3.1-8b-instant")
+    )
     connect4_mode: str = field(
         default_factory=lambda: os.environ.get("CONNECT4_MODE", "simulated")
     )
