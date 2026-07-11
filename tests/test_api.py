@@ -55,6 +55,7 @@ class TestWiFiGate:
             for path, method, body in [
                 ("/api/chat", "POST", {"messages": [{"role": "user", "content": "hi"}]}),
                 ("/api/devices", "GET", None),
+                ("/api/ping", "GET", None),
                 ("/api/status", "GET", None),
                 ("/", "GET", None),
             ]:
@@ -87,6 +88,13 @@ class TestAPI:
             resp = await client.get("/api/devices")
         assert resp.status_code == 200
         assert len(resp.json()["devices"]) == 7
+
+    @pytest.mark.asyncio
+    async def test_ping_from_home_wifi(self, fresh_app):
+        async with client_from(fresh_app, "192.168.1.5") as client:
+            resp = await client.get("/api/ping")
+        assert resp.status_code == 200
+        assert resp.json() == {"ok": True}
 
     @pytest.mark.asyncio
     async def test_status_endpoint(self, fresh_app):

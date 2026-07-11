@@ -50,6 +50,13 @@ async def status(request: Request):
     }
 
 
+@app.get("/api/ping")
+async def ping():
+    """Instant connectivity check: passes through every gate (WiFi gate,
+    access code) but touches no devices, so it never waits on discovery."""
+    return {"ok": True}
+
+
 @app.get("/api/devices")
 async def devices():
     return {"devices": [d.model_dump() for d in await hub.list_devices()]}

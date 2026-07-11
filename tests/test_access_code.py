@@ -50,6 +50,13 @@ class TestAccessCodeGate:
         assert resp.json()["error"] == "access_code_required"
 
     @pytest.mark.asyncio
+    async def test_ping_gated_by_code(self, code_app):
+        async with client_from(code_app, "203.0.113.50") as client:
+            assert (await client.get("/api/ping")).status_code == 401
+        async with client_from(code_app, "203.0.113.50", "sesame42") as client:
+            assert (await client.get("/api/ping")).status_code == 200
+
+    @pytest.mark.asyncio
     async def test_wrong_code_rejected(self, code_app):
         async with client_from(code_app, "203.0.113.50", "guess") as client:
             resp = await client.get("/api/devices")

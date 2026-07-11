@@ -28,6 +28,21 @@
   }
   .badge.ok { color: var(--ok); }
   .badge.bad { color: var(--bad); }
+  #conn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 18px; font-weight: 600; font-size: .95rem;
+    border-bottom: 1px solid #2b3650; background: var(--panel);
+  }
+  #conn .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; font-size: 1rem;
+    color: #fff; background: #555; flex: none;
+  }
+  #conn.ok .mark { background: var(--ok); }
+  #conn.ok { color: var(--ok); }
+  #conn.bad .mark { background: var(--bad); }
+  #conn.bad { color: var(--bad); }
+  #conn.checking { color: var(--muted); }
   main {
     display: flex; flex: 1; min-height: 0;
   }
@@ -80,9 +95,12 @@
 <body>
 <header>
   <h1>🏠 Connect4 Home Assistant</h1>
-  <span class="badge" id="wifi-badge">checking WiFi…</span>
   <span class="badge" id="model-badge"></span>
 </header>
+<div id="conn" class="checking">
+  <span class="mark" id="conn-mark">○</span>
+  <span id="conn-text">Checking connection to your smarthome…</span>
+</div>
 <main>
   <section id="chat">
     <div id="messages">
@@ -147,27 +165,38 @@ function addActions(actions) {
   messagesEl.appendChild(div);
 }
 
+function setConn(state, mark, text) {
+  document.getElementById('conn').className = state;
+  document.getElementById('conn-mark').textContent = mark;
+  document.getElementById('conn-text').textContent = text;
+}
+
 async function refreshStatus() {
-  const badge = document.getElementById('wifi-badge');
   try {
     const r = await fetch('/api/status');
     if (!r.ok) throw new Error();
     const s = await r.json();
     document.getElementById('model-badge').textContent = '🧠 ' + s.model;
-    if (s.access_code_required && !accessCode) {
-      askForCode();
-      refreshDevices();
-    }
-    if (s.access_code_required) {
-      badge.textContent = '🔑 access code mode'; badge.className = 'badge ok';
-    } else if (s.wifi.client_allowed && s.wifi.server_ssid_ok) {
-      badge.textContent = '📶 on home WiFi'; badge.className = 'badge ok';
+    if (s.access_code_required && !accessCode) askForCode();
+  } catch { /* the ping below reports connectivity */ }
+  await refreshConnection();
+  refreshDevices();
+}
+
+// The checkmark reflects a real end-to-end check: a successful ping means
+// every gate (WiFi / access code) passed and the smarthome responded.
+async function refreshConnection() {
+  try {
+    const r = await apiFetch('/api/ping');
+    if (r.ok) {
+      setConn('ok', '✓', 'Connected to your smarthome');
+    } else if (r.status === 401) {
+      setConn('bad', '✕', 'Access code needed — reload this page to enter it.');
     } else {
-      badge.textContent = '📶 WiFi check failed'; badge.className = 'badge bad';
+      setConn('bad', '✕', 'Not connected — join the home WiFi to control the smarthome.');
     }
   } catch {
-    badge.textContent = '🚫 not on home WiFi — control disabled';
-    badge.className = 'badge bad';
+    setConn('bad', '✕', 'Not connected — join the home WiFi to control the smarthome.');
   }
 }
 
@@ -190,7 +219,7 @@ async function refreshDevices() {
         extras.join(' · ') + '</div>';
       list.appendChild(el);
     }
-  } catch { /* panel is best-effort */ }
+  } catch { /* panel is best-effort; the checkmark comes from refreshConnection */ }
 }
 
 form.addEventListener('submit', async (e) => {
@@ -229,8 +258,7 @@ form.addEventListener('submit', async (e) => {
 });
 
 refreshStatus();
-refreshDevices();
-setInterval(refreshStatus, 30000);
+setInterval(refreshStatus, 15000);
 </script>
 </body>
 </html>

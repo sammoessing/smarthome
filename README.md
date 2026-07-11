@@ -1,5 +1,7 @@
 # Connect4 Smart Home Chatbot
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsammoessing%2Fsmarthome&env=OPENAI_API_KEY,ACCESS_CODE&envDescription=OPENAI_API_KEY%3A%20your%20Groq%20API%20key%20(console.groq.com).%20ACCESS_CODE%3A%20a%20secret%20of%20your%20choice%20that%20unlocks%20the%20app.&project-name=connect4-smarthome&repository-name=connect4-smarthome)
+
 A chatbot web app that controls your **Connect4** smart home system — speakers,
 lights, and TVs — using an **open-source LLM** (via [Ollama](https://ollama.com),
 default model: `llama3.1`).
