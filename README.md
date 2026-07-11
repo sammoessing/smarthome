@@ -1,0 +1,109 @@
+# Connect4 Smart Home Chatbot
+
+A chatbot web app that controls your **Connect4** smart home system — speakers,
+lights, and TVs — using an **open-source LLM** (via [Ollama](https://ollama.com),
+default model: `llama3.1`).
+
+For safety, the app **only works while you are on your home WiFi**: every
+control request is rejected unless it comes from a device on the local network
+(and, optionally, unless the server itself is connected to your home SSID).
+
+## How it works
+
+```
+Browser (chat UI)
+   │  must be on home WiFi / LAN — enforced by WiFiGateMiddleware
+   ▼
+FastAPI backend  ──► Ollama (open-source LLM, tool calling)
+   │                     │
+   │  ◄── tool calls ────┘
+   ▼
+Connect4 hub (speakers / lights / TVs)
+```
+
+1. You type a message like *"dim the living room lights to 30% and turn on the
+   kitchen speaker"*.
+2. The backend sends the conversation plus a set of **device tools** to the LLM.
+3. The LLM decides which tools to call (e.g. `set_light`, `control_speaker`);
+   the backend executes them against the Connect4 hub and feeds the results
+   back to the model.
+4. The model replies in natural language with what it did.
+
+## Requirements
+
+- Python 3.10+
+- [Ollama](https://ollama.com) running locally with a tool-capable open-source
+  model pulled:
+
+  ```bash
+  ollama pull llama3.1
+  ```
+
+## Quick start
+
+```bash
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then open `http://<server-ip>:8000` from a device **on the same WiFi network**.
+
+## Configuration
+
+Configuration is via environment variables (see `.env.example`):
+
+| Variable | Default | Description |
+|---|---|---|
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.1` | Open-source model to use (must support tool calling) |
+| `ALLOWED_SUBNETS` | private + loopback ranges | Comma-separated CIDRs allowed to use the app |
+| `REQUIRED_SSID` | *(unset)* | If set, the **server** must be connected to this WiFi SSID or all control is disabled |
+| `CONNECT4_MODE` | `simulated` | `simulated` uses the built-in virtual home; `http` proxies to a real Connect4 hub |
+| `CONNECT4_HUB_URL` | *(unset)* | Base URL of a real Connect4 hub (used when `CONNECT4_MODE=http`) |
+
+### The WiFi gate
+
+Two independent checks, both enforced by `app/network.py`:
+
+1. **Client check (always on):** the requester's IP must be inside
+   `ALLOWED_SUBNETS`. By default that is loopback + RFC1918 private ranges
+   (`127.0.0.0/8`, `10.0.0.0/8`, `172.16.0.0/12`, `192.168.0.0/16`), i.e. your
+   home LAN/WiFi. Requests from outside get **403** and the LLM is never
+   invoked. Tighten it to your exact WiFi subnet, e.g.
+   `ALLOWED_SUBNETS=192.168.1.0/24`.
+2. **Server SSID check (optional):** set `REQUIRED_SSID=MyHomeWiFi` and the
+   server verifies (via `iwgetid`) that it is actually connected to that WiFi
+   network before allowing any control.
+
+## Devices
+
+The simulated Connect4 home ships with:
+
+| Device | Room | Capabilities |
+|---|---|---|
+| Living Room Light | living room | on/off, brightness, color |
+| Kitchen Light | kitchen | on/off, brightness, color |
+| Bedroom Light | bedroom | on/off, brightness, color |
+| Living Room Speaker | living room | on/off, volume, play/pause, track |
+| Kitchen Speaker | kitchen | on/off, volume, play/pause, track |
+| Living Room TV | living room | on/off, volume, channel, input |
+| Bedroom TV | bedroom | on/off, volume, channel, input |
+
+To drive real hardware, set `CONNECT4_MODE=http` and point `CONNECT4_HUB_URL`
+at your hub; `app/connect4.py` documents the small REST contract it expects.
+
+## API
+
+| Endpoint | Description |
+|---|---|
+| `GET /` | Chat UI |
+| `POST /api/chat` | `{"messages": [...]}` → chatbot reply (runs tool calls) |
+| `GET /api/devices` | Current state of every Connect4 device |
+| `GET /api/status` | WiFi-gate status, model, hub mode |
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
