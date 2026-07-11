@@ -45,11 +45,8 @@ fi
 source "$APP_HOME/.venv/bin/activate"
 pip install -q -r "$SRC/requirements.txt"
 
-IP="$(ipconfig getifaddr en0 2>/dev/null || hostname -I 2>/dev/null | awk '{print $1}' || echo localhost)"
-
 echo
 echo "  ✓ Starting! Your browser will open in a moment."
-echo "    On your phone (same WiFi), open:  http://$IP:8000"
 echo "    Leave this window open; close it (or press Ctrl+C) to stop."
 echo
 
@@ -60,4 +57,4 @@ elif command -v xdg-open >/dev/null 2>&1; then
 fi
 
 cd "$SRC"
-exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec python3 -m app.launch

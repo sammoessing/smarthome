@@ -81,12 +81,18 @@ app on a machine that joins that WiFi — a laptop or a travel Raspberry Pi.
   first time, right-click it and choose *Open* (Gatekeeper).
 - Windows: [`Connect4 Start.bat`](launchers/Connect4%20Start.bat)
 
-Each downloads the latest app, sets it up, starts it, and opens your browser
-at the checkmark page. Terminal alternative: `./start.sh`, or directly:
+One double-click does everything:
 
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+1. downloads the latest app and sets it up,
+2. generates an **access code** (shown in the window, remembered per device),
+3. starts the server with **real Sonos discovery**, prints the in-house URL
+   with a **QR code** for phones,
+4. opens a **free public HTTPS tunnel** (Cloudflare quick tunnel, no
+   account) and prints a `https://….trycloudflare.com` link + QR — a live
+   URL that controls the real house **from anywhere**, protected by the
+   access code, for as long as the window stays open.
+
+Terminal alternative: `./start.sh` (same behavior, via `python -m app.launch`).
 
 Then everything composes on its own:
 

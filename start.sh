@@ -12,14 +12,4 @@ fi
 source .venv/bin/activate
 pip install -q -r requirements.txt
 
-if command -v hostname >/dev/null && hostname -I >/dev/null 2>&1; then
-  IP=$(hostname -I | awk '{print $1}')
-else
-  IP=$(ipconfig getifaddr en0 2>/dev/null || echo "<this-machine's-ip>")
-fi
-
-echo
-echo "  Connect4 Home Assistant is starting."
-echo "  On your phone (same WiFi), open:  http://$IP:8000"
-echo
-exec python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000
+exec python3 -m app.launch
