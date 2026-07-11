@@ -121,7 +121,7 @@
 
 <header>
   <h1 class="wordmark">🏠 Connect<span class="four">4</span> Home Assistant</h1>
-  <span class="tag">Llama 3.1 · live</span>
+  <span class="tag">Demo home · Llama 3.1</span>
   <button id="key-btn" type="button">API key…</button>
 </header>
 
@@ -249,8 +249,8 @@ Rules:
 - When the user names a room, match it to the right device. If a request is ambiguous, ask which device instead of guessing — unless they clearly mean all of them.
 - When turning media on (playing music, watching TV), also power the device on if it is off.
 - After acting, confirm briefly and naturally what you did. Never invent device state: report only what the tools returned.
-- This is the demo home (simulated devices); the same assistant runs against real devices like Sonos when the app runs inside the house's WiFi. If asked about connecting to real systems, explain that warmly.
-- You control ONLY the Connect4 home. Politely decline anything else, though friendly small talk is fine.`;
+- IMPORTANT — be honest about what this is: this public page controls a SIMULATED demo home only. The user is NOT connected to any real house here, whatever WiFi they are on, and there are no real Sonos or Connect4 devices behind this page. If they ask whether this is connected to their real home, or about Sonos or other real devices, say plainly: "This page only controls the practice home. To control the real house you're in (including Sonos speakers), run the Connect4 app on a computer on that house's WiFi — the double-click launcher in the GitHub repo (sammoessing/smarthome) does it all and auto-discovers Sonos." Never claim or imply a connection to their actual home.
+- You control ONLY this demo Connect4 home. Politely decline anything else, though friendly small talk is fine.`;
 
 const history = [];
 
@@ -355,7 +355,7 @@ async function checkConnection() {
   try {
     const r = await fetch(API_BASE + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
     if (r.ok) {
-      setConn('ok', '✓', 'Connected to your smarthome');
+      setConn('ok', '✓', 'Assistant online — controlling the demo home (not a real house)');
       keybar.classList.remove('show');
       return true;
     }
@@ -410,7 +410,7 @@ form.addEventListener('submit', async (e) => {
   }
 });
 
-addMsg("Hi! I'm your Connect4 home assistant, running on Llama 3.1 — a real open-source LLM. I control this demo home's lights, speakers, and TVs; inside a real house's WiFi the same assistant drives real devices like Sonos.\n\nTry: \"turn on the living room lights and make them blue\", \"play jazz in the kitchen\", or just chat.", 'bot');
+addMsg("Hi! I'm your Connect4 home assistant, running on Llama 3.1 — a real open-source LLM. Heads up: this page controls a practice home with simulated devices, not the house you're in. (To control a real house — Sonos included — run the app from the launcher on that house's WiFi.)\n\nTry: \"turn on the living room lights and make them blue\", \"play jazz in the kitchen\", or just chat.", 'bot');
 renderDevices();
 checkConnection();
 </script>
