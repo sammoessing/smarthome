@@ -17,6 +17,10 @@ app = FastAPI(title="Connect4 Smart Home Chatbot")
 app.add_middleware(WiFiGateMiddleware, settings=settings)
 
 hub = make_hub(settings.connect4_mode, settings.connect4_hub_url)
+if settings.sonos_enabled:
+    from .sonos import SONOS_ID_PREFIX, CompositeHub, SonosBridge
+
+    hub = CompositeHub(hub, {SONOS_ID_PREFIX: SonosBridge()})
 chat = make_chat(settings)
 
 
@@ -40,6 +44,7 @@ async def status(request: Request):
         "system": "Connect4",
         "model": chat.model,
         "hub_mode": settings.connect4_mode,
+        "sonos_enabled": settings.sonos_enabled,
         "access_code_required": settings.access_code is not None,
         "wifi": wifi_status(settings, effective_client_ip(request, settings)),
     }

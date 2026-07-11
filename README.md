@@ -65,6 +65,32 @@ Configuration is via environment variables (see `.env.example`):
 | `ACCESS_CODE` | *(unset)* | If set, control works from **any network** but requires this code (UI asks once per device) |
 | `CONNECT4_MODE` | `simulated` | `simulated` uses the built-in virtual home; `http` proxies to a real Connect4 hub |
 | `CONNECT4_HUB_URL` | *(unset)* | Base URL of a real Connect4 hub (used when `CONNECT4_MODE=http`) |
+| `SONOS_ENABLED` | `auto` | Discover/control Sonos on the LAN (`auto` = on locally, off on Vercel) |
+
+## Taking it to any house ("works on whatever WiFi I'm on")
+
+Smart home devices (Sonos, hubs, ...) are controlled over the **local
+network**, so the way to control *whichever home you're in* is to run this
+app on a machine that joins that WiFi — a laptop or a travel Raspberry Pi:
+
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+Then everything composes on its own:
+
+- The default WiFi gate allows any **private/LAN** client, so the app works
+  on *any* WiFi you and it have joined — no per-house configuration.
+- LAN discovery (default on) finds what's actually in that house: Sonos
+  speakers appear automatically; a Connect4 hub is attached by pointing
+  `CONNECT4_HUB_URL` at it (`CONNECT4_MODE=http`).
+- Other smart home systems plug in the same way as Sonos: implement the
+  small hub interface (`list_devices` / `get_device` / `apply`) and register
+  the bridge with its id prefix in `app/main.py` (see `CompositeHub`).
+
+The Vercel deployment complements this as the anywhere-demo (simulated home
++ access code), but it cannot scan whatever LAN you happen to be on — local
+device control always needs the app inside the house's network.
 
 ### Two access modes
 
@@ -106,6 +132,28 @@ The simulated Connect4 home ships with:
 
 To drive real hardware, set `CONNECT4_MODE=http` and point `CONNECT4_HUB_URL`
 at your hub; `app/connect4.py` documents the small REST contract it expects.
+
+### Sonos speakers (real hardware, works today)
+
+By default (when running locally) the app discovers Sonos speakers on the
+local network (via the open-source [SoCo](https://github.com/SoCo/SoCo)
+library) and lists them alongside the Connect4 devices as e.g.
+"Living Room (Sonos)".
+The chatbot can pause/resume them, set volume, and tell you what's playing.
+
+Two constraints, both physics rather than code:
+
+- **The server must be on the same WiFi as the speakers.** Sonos is
+  controlled over the LAN, so a cloud (Vercel) deployment finds nothing —
+  run the app on a laptop in the house instead:
+
+  ```bash
+  SONOS_ENABLED=true uvicorn app.main:app --host 0.0.0.0 --port 8000
+  ```
+
+- **Starting your phone's music is done from the phone.** Begin playback
+  with the Sonos app, AirPlay, or Spotify Connect; the chatbot controls it
+  from there (pause, resume, volume, now-playing).
 
 ## API
 

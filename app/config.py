@@ -19,6 +19,15 @@ def _parse_subnets(raw: str) -> list[IPv4Network | IPv6Network]:
     return [ip_network(s.strip()) for s in raw.split(",") if s.strip()]
 
 
+def _discovery_enabled(var: str) -> bool:
+    """LAN-discovery switch: explicit true/false wins; "auto" (the default)
+    enables it except on serverless hosts, where there is no LAN to scan."""
+    raw = os.environ.get(var, "auto").lower()
+    if raw == "auto":
+        return "VERCEL" not in os.environ
+    return raw in ("1", "true", "yes")
+
+
 @dataclass
 class Settings:
     ollama_url: str = field(
@@ -62,6 +71,10 @@ class Settings:
     connect4_hub_url: str | None = field(
         default_factory=lambda: os.environ.get("CONNECT4_HUB_URL") or None
     )
+    # Discover and control real Sonos speakers on the local network (requires
+    # the server to be on the same WiFi as the speakers). Default "auto":
+    # on wherever LAN discovery can work, off on serverless (Vercel).
+    sonos_enabled: bool = field(default_factory=lambda: _discovery_enabled("SONOS_ENABLED"))
     # If set, clients must present this code (the UI asks once per device).
     # With a code configured, the IP gate defaults to open — the code becomes
     # the thing that keeps strangers out, so the app works from any network.

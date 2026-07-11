@@ -4,6 +4,7 @@ from pydantic import ValidationError
 
 from .connect4 import Connect4Hub, DeviceNotFound
 from .devices import DeviceType
+from .sonos import UnsupportedSonosOperation
 
 TOOLS = [
     {
@@ -120,6 +121,8 @@ async def dispatch_tool(hub: Connect4Hub, name: str, args: dict) -> dict:
         updated = await hub.apply(device_id, changes)
         return {"ok": True, "device": updated.model_dump()}
     except DeviceNotFound as exc:
+        return {"error": str(exc)}
+    except UnsupportedSonosOperation as exc:
         return {"error": str(exc)}
     except ValidationError as exc:
         return {"error": f"Invalid value: {exc.errors()[0].get('msg', str(exc))}"}
