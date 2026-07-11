@@ -62,8 +62,19 @@ Configuration is via environment variables (see `.env.example`):
 | `TRUST_PROXY_HEADER` | `false` | Trust `X-Forwarded-For` for the WiFi gate (needed on Vercel) |
 | `ALLOWED_SUBNETS` | private + loopback ranges | Comma-separated CIDRs allowed to use the app |
 | `REQUIRED_SSID` | *(unset)* | If set, the **server** must be connected to this WiFi SSID or all control is disabled |
+| `ACCESS_CODE` | *(unset)* | If set, control works from **any network** but requires this code (UI asks once per device) |
 | `CONNECT4_MODE` | `simulated` | `simulated` uses the built-in virtual home; `http` proxies to a real Connect4 hub |
 | `CONNECT4_HUB_URL` | *(unset)* | Base URL of a real Connect4 hub (used when `CONNECT4_MODE=http`) |
+
+### Two access modes
+
+- **WiFi-only mode (default):** only clients on the allowed subnets (your home
+  LAN/WiFi) can use the app. Best when the server runs at home.
+- **Access-code mode:** set `ACCESS_CODE=some-secret` and the app works from
+  *any* network — any house's WiFi, or cellular — but every device must enter
+  the code once (the UI remembers it). The IP gate defaults to open in this
+  mode; set `ALLOWED_SUBNETS` too if you want both checks. Best for cloud
+  deployments (Vercel) where you roam between networks.
 
 ### The WiFi gate
 
@@ -117,19 +128,19 @@ OpenAI-compatible API — Groq's free tier serving Llama 3.1 by default.
 
    ```
    OPENAI_API_KEY=gsk_...            # your Groq key
+   ACCESS_CODE=<pick-a-secret>       # works from any network, code required
+   ```
+
+   Or, to restrict to your home network instead of using a code:
+
+   ```
+   OPENAI_API_KEY=gsk_...
    TRUST_PROXY_HEADER=true           # gate on the real caller IP
    ALLOWED_SUBNETS=<home-ip>/32      # your home's public IP (whatismyip.com)
    ```
 
-3. Deploy and open the URL — it only responds when you're on your home WiFi.
-
-How the WiFi rule survives the cloud: when you're on your home WiFi, requests
-reach Vercel from your router's **public IP**; setting `ALLOWED_SUBNETS` to
-that IP (a `/32`) means the app only answers devices on your home network,
-same as at home. If your ISP rotates your IP, update the variable (or
-temporarily use `0.0.0.0/0` to allow everywhere — this disables the WiFi
-restriction entirely, so anyone with the URL can control the app; don't
-leave it that way).
+3. Deploy and open the URL. In access-code mode the UI asks for your code
+   once per device; in WiFi mode it only responds from your home network.
 
 Serverless caveats: the simulated home lives in instance memory, so device
 state can reset between requests when Vercel recycles instances — fine for

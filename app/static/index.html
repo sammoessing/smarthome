@@ -105,6 +105,30 @@ const input = document.getElementById('input');
 const send = document.getElementById('send');
 const history = [];
 
+let accessCode = localStorage.getItem('connect4-access-code') || '';
+
+function askForCode(message) {
+  const entered = window.prompt(message || 'Enter your Connect4 access code:');
+  if (entered !== null) {
+    accessCode = entered.trim();
+    localStorage.setItem('connect4-access-code', accessCode);
+  }
+  return entered !== null;
+}
+
+// fetch wrapper that attaches the access code and re-prompts once on 401
+async function apiFetch(path, opts = {}) {
+  opts.headers = { ...(opts.headers || {}), 'X-Access-Code': accessCode };
+  let r = await fetch(path, opts);
+  if (r.status === 401) {
+    if (askForCode('Access code required to control the home:')) {
+      opts.headers['X-Access-Code'] = accessCode;
+      r = await fetch(path, opts);
+    }
+  }
+  return r;
+}
+
 function addMsg(text, cls) {
   const div = document.createElement('div');
   div.className = 'msg ' + cls;
@@ -130,7 +154,13 @@ async function refreshStatus() {
     if (!r.ok) throw new Error();
     const s = await r.json();
     document.getElementById('model-badge').textContent = '🧠 ' + s.model;
-    if (s.wifi.client_allowed && s.wifi.server_ssid_ok) {
+    if (s.access_code_required && !accessCode) {
+      askForCode();
+      refreshDevices();
+    }
+    if (s.access_code_required) {
+      badge.textContent = '🔑 access code mode'; badge.className = 'badge ok';
+    } else if (s.wifi.client_allowed && s.wifi.server_ssid_ok) {
       badge.textContent = '📶 on home WiFi'; badge.className = 'badge ok';
     } else {
       badge.textContent = '📶 WiFi check failed'; badge.className = 'badge bad';
@@ -143,7 +173,7 @@ async function refreshStatus() {
 
 async function refreshDevices() {
   try {
-    const r = await fetch('/api/devices');
+    const r = await apiFetch('/api/devices');
     if (!r.ok) return;
     const { devices } = await r.json();
     const list = document.getElementById('device-list');
@@ -173,7 +203,7 @@ form.addEventListener('submit', async (e) => {
   send.disabled = true;
   const thinking = addMsg('…', 'bot');
   try {
-    const r = await fetch('/api/chat', {
+    const r = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history }),

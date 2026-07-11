@@ -40,6 +40,7 @@ async def status(request: Request):
         "system": "Connect4",
         "model": chat.model,
         "hub_mode": settings.connect4_mode,
+        "access_code_required": settings.access_code is not None,
         "wifi": wifi_status(settings, effective_client_ip(request, settings)),
     }
 

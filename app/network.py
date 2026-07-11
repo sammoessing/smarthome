@@ -11,6 +11,7 @@ Two checks:
    home WiFi, all control is disabled.
 """
 
+import secrets
 import subprocess
 from ipaddress import ip_address
 
@@ -95,6 +96,21 @@ class WiFiGateMiddleware(BaseHTTPMiddleware):
                     "WiFi network. Connect to the home network and try again.",
                 },
             )
+        # The chat page and status endpoint stay reachable without a code so
+        # the UI can load and ask for one; everything that inspects or
+        # controls devices requires it.
+        exempt = request.url.path in ("/", "/api/status")
+        if self.settings.access_code and not exempt:
+            supplied = request.headers.get("x-access-code", "")
+            if not secrets.compare_digest(supplied, self.settings.access_code):
+                return JSONResponse(
+                    status_code=401,
+                    content={
+                        "error": "access_code_required",
+                        "detail": "A valid access code is required to control "
+                        "the Connect4 home.",
+                    },
+                )
         # /api/status stays reachable on the LAN even if the server has
         # dropped off the required SSID, so the UI can explain why.
         if request.url.path != "/api/status" and not server_ssid_ok(self.settings):

@@ -62,6 +62,16 @@ class Settings:
     connect4_hub_url: str | None = field(
         default_factory=lambda: os.environ.get("CONNECT4_HUB_URL") or None
     )
+    # If set, clients must present this code (the UI asks once per device).
+    # With a code configured, the IP gate defaults to open — the code becomes
+    # the thing that keeps strangers out, so the app works from any network.
+    access_code: str | None = field(
+        default_factory=lambda: os.environ.get("ACCESS_CODE") or None
+    )
+
+    def __post_init__(self):
+        if self.access_code and "ALLOWED_SUBNETS" not in os.environ:
+            self.allowed_subnets = [ip_network("0.0.0.0/0"), ip_network("::/0")]
 
 
 settings = Settings()
