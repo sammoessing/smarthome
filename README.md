@@ -73,7 +73,16 @@ Configuration is via environment variables (see `.env.example`):
 
 Smart home devices (Sonos, hubs, ...) are controlled over the **local
 network**, so the way to control *whichever home you're in* is to run this
-app on a machine that joins that WiFi — a laptop or a travel Raspberry Pi:
+app on a machine that joins that WiFi — a laptop or a travel Raspberry Pi.
+
+**No terminal needed — double-click launchers** (in [`launchers/`](launchers)):
+
+- macOS: [`Connect4 Start.command`](launchers/Connect4%20Start.command) —
+  first time, right-click it and choose *Open* (Gatekeeper).
+- Windows: [`Connect4 Start.bat`](launchers/Connect4%20Start.bat)
+
+Each downloads the latest app, sets it up, starts it, and opens your browser
+at the checkmark page. Terminal alternative: `./start.sh`, or directly:
 
 ```bash
 uvicorn app.main:app --host 0.0.0.0 --port 8000
