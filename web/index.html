@@ -40,8 +40,14 @@
     letter-spacing: .08em; color: var(--accent);
     background: var(--accent-soft); border-radius: 999px; padding: 3px 10px;
   }
-  #key-btn {
+  #real-btn {
     margin-left: auto; font-size: .78rem; padding: 5px 12px;
+    border-radius: 999px; border: 1px solid var(--accent);
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+    text-decoration: none; font-weight: 700;
+  }
+  #key-btn {
+    font-size: .78rem; padding: 5px 12px;
     border-radius: 999px; border: 1px solid var(--line);
     background: var(--panel-2); color: var(--muted); cursor: pointer;
   }
@@ -122,6 +128,7 @@
 <header>
   <h1 class="wordmark">🏠 Connect<span class="four">4</span> Home Assistant</h1>
   <span class="tag">Demo home · Llama 3.1</span>
+  <a id="real-btn" href="https://github.com/sammoessing/smarthome#taking-it-to-any-house-works-on-whatever-wifi-im-on" target="_blank" rel="noopener">Control my real home →</a>
   <button id="key-btn" type="button">API key…</button>
 </header>
 
