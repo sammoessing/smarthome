@@ -137,6 +137,19 @@ class TestCompositeHub:
         assert len(devices) == 7  # base home intact
 
     @pytest.mark.asyncio
+    async def test_slow_bridge_is_skipped_not_hung(self, monkeypatch):
+        import asyncio
+
+        class SlowBridge:
+            async def list_devices(self):
+                await asyncio.sleep(60)  # would hang the request
+
+        monkeypatch.setattr(CompositeHub, "BRIDGE_TIMEOUT", 0.05)
+        hub = CompositeHub(SimulatedConnect4Hub(), {"sonos-": SlowBridge()})
+        devices = await asyncio.wait_for(hub.list_devices(), timeout=2)
+        assert len(devices) == 7  # base home returned promptly, slow bridge dropped
+
+    @pytest.mark.asyncio
     async def test_chatbot_tool_controls_sonos(self, bridge, zone):
         hub = CompositeHubForTest(bridge)
         result = await dispatch_tool(

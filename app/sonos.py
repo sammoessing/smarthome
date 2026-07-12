@@ -134,12 +134,20 @@ class CompositeHub:
         self._base = base
         self._bridges = bridges  # id prefix -> bridge
 
+    # A slow or flaky smart-home system must never hang the whole request:
+    # if a bridge takes longer than this, we skip it for this call. (The base
+    # Connect4 devices always come back.) Kept well under the public tunnel's
+    # response timeout so device queries can't fail with "could not reach".
+    BRIDGE_TIMEOUT = 12.0
+
     async def list_devices(self) -> list[Device]:
         devices = list(await self._base.list_devices())
         for bridge in self._bridges.values():
             try:
-                devices.extend(await bridge.list_devices())
-            except Exception:  # one system failing must not break the home
+                devices.extend(
+                    await asyncio.wait_for(bridge.list_devices(), self.BRIDGE_TIMEOUT)
+                )
+            except Exception:  # one system failing/slow must not break the home
                 continue
         return devices
 
