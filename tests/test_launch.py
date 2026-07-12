@@ -1,6 +1,41 @@
 """Tests for the go-live launcher helpers."""
 
+import os
+
 from app import launch
+
+
+class TestLLMConfig:
+    def test_uses_persisted_key(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CONNECT4_HOME", str(tmp_path))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        (tmp_path / "groq-key.txt").write_text("gsk_persisted\n")
+        launch.ensure_llm_configured()
+        assert os.environ["OPENAI_API_KEY"] == "gsk_persisted"
+
+    def test_env_wins_without_prompting(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CONNECT4_HOME", str(tmp_path))
+        monkeypatch.setenv("OPENAI_API_KEY", "gsk_from_env")
+        monkeypatch.setattr(
+            "builtins.input", lambda *_: (_ for _ in ()).throw(AssertionError("should not prompt"))
+        )
+        launch.ensure_llm_configured()
+        assert os.environ["OPENAI_API_KEY"] == "gsk_from_env"
+
+    def test_prompts_and_persists(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CONNECT4_HOME", str(tmp_path))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setattr("builtins.input", lambda *_: "gsk_typed")
+        launch.ensure_llm_configured()
+        assert os.environ["OPENAI_API_KEY"] == "gsk_typed"
+        assert (tmp_path / "groq-key.txt").read_text().strip() == "gsk_typed"
+
+    def test_blank_answer_skips(self, tmp_path, monkeypatch):
+        monkeypatch.setenv("CONNECT4_HOME", str(tmp_path))
+        monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+        monkeypatch.setattr("builtins.input", lambda *_: "")
+        launch.ensure_llm_configured()
+        assert "OPENAI_API_KEY" not in os.environ
 
 
 class TestAccessCode:

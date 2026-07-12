@@ -1,5 +1,6 @@
 """Connect4 smart home chatbot — FastAPI application."""
 
+import logging
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Request
@@ -10,6 +11,8 @@ from .config import settings
 from .connect4 import make_hub
 from .llm import LLMError, make_chat
 from .network import WiFiGateMiddleware, effective_client_ip, wifi_status
+
+logger = logging.getLogger("connect4")
 
 STATIC_DIR = Path(__file__).parent / "static"
 
@@ -69,3 +72,10 @@ async def chat_endpoint(body: ChatRequest):
         return await chat.respond(hub, messages)
     except LLMError as exc:
         raise HTTPException(status_code=502, detail=str(exc)) from exc
+    except Exception as exc:
+        # Any other failure (a device tool blowing up, etc.) must still come
+        # back as JSON: an unhandled exception yields a plain-text 500 that
+        # breaks the browser's response.json() and surfaces as a misleading
+        # "could not reach the server" error instead of the real problem.
+        logger.exception("chat_endpoint failed")
+        raise HTTPException(status_code=500, detail=f"Something went wrong: {exc}") from exc

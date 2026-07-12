@@ -69,6 +69,39 @@ def ensure_access_code() -> str:
     return code
 
 
+def ensure_llm_configured() -> None:
+    """Make sure a chat model is actually reachable before the server starts.
+
+    Without this, the default is a local Ollama install that almost never
+    exists on a freshly-set-up machine: every chat message would fail, and
+    the failure wouldn't surface until someone tries to type something.
+    """
+    if os.environ.get("OPENAI_API_KEY", "").strip():
+        return
+    f = state_dir() / "groq-key.txt"
+    if f.exists():
+        key = f.read_text().strip()
+        if key:
+            os.environ["OPENAI_API_KEY"] = key
+            return
+    print()
+    print("  No AI model connected yet. Get a free key (~30 seconds):")
+    print("    https://console.groq.com/keys")
+    try:
+        key = input(
+            "  Paste your Groq API key (or press Enter to use a local "
+            "Ollama install instead): "
+        ).strip()
+    except (EOFError, OSError):
+        key = ""
+    if key:
+        f.parent.mkdir(parents=True, exist_ok=True)
+        f.write_text(key + "\n")
+        os.environ["OPENAI_API_KEY"] = key
+    else:
+        print("  Skipping — install and start Ollama first: https://ollama.com")
+
+
 def _platform_key() -> tuple[str, str]:
     import platform
 
@@ -155,6 +188,7 @@ def print_qr(url: str) -> None:
 
 
 def main() -> None:
+    ensure_llm_configured()
     code = ensure_access_code()
     local_url = f"http://{lan_ip()}:{PORT}"
 
