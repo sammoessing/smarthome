@@ -27,21 +27,27 @@ if errorlevel 1 (
   )
 )
 
-where python >nul 2>nul
-if errorlevel 1 (
-  echo   X Python is needed. A download page will open - install Python,
-  echo     TICK "Add python.exe to PATH", then double-click this file again.
-  start https://www.python.org/downloads/
+REM Find a Python that actually runs. The bare "python" on Windows is often
+REM a Microsoft Store placeholder that only opens the Store (so "where python"
+REM finds it but it can't run anything) - verify it really works.
+set "PY="
+python --version >nul 2>nul && set "PY=python"
+if not defined PY py --version >nul 2>nul && set "PY=py"
+if not defined PY (
+  echo   X Python isn't installed yet. The Microsoft Store will open -
+  echo     click Get / Install, wait for it to finish, then double-click
+  echo     this file again.
+  start ms-windows-store://search/?query=Python
   pause
   exit /b 1
 )
 
 if not exist "%APP_HOME%\.venv" (
   echo   Setting up ^(first run only, ~1 minute^)...
-  python -m venv "%APP_HOME%\.venv"
+  %PY% -m venv "%APP_HOME%\.venv"
 )
 call "%APP_HOME%\.venv\Scripts\activate.bat"
-pip install -q -r "%SRC%\requirements.txt"
+python -m pip install -q -r "%SRC%\requirements.txt"
 
 echo.
 echo   Starting! Your browser will open in a moment.
