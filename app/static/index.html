@@ -231,26 +231,42 @@ form.addEventListener('submit', async (e) => {
   history.push({ role: 'user', content: text });
   send.disabled = true;
   const thinking = addMsg('…', 'bot');
+  // Give the request a generous ceiling: a real device scan + a couple of
+  // model rounds can take a while, but we never want to hang forever.
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), 90000);
   try {
     const r = await apiFetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ messages: history }),
+      signal: ctrl.signal,
     });
-    const data = await r.json();
+    let data;
+    try { data = await r.json(); }
+    catch { data = { detail: `Server returned ${r.status} ${r.statusText} (not JSON).` }; }
     thinking.remove();
     if (!r.ok) {
-      addMsg(data.detail || data.error || 'Request failed', 'err');
+      addMsg(data.detail || data.error || `Request failed (${r.status})`, 'err');
     } else {
       addMsg(data.reply, 'bot');
       history.push({ role: 'assistant', content: data.reply });
       addActions(data.actions || []);
       refreshDevices();
     }
-  } catch {
+  } catch (err) {
     thinking.remove();
-    addMsg('Could not reach the Connect4 server. Are you on the home WiFi?', 'err');
+    // Report what actually went wrong instead of always blaming WiFi.
+    if (err.name === 'AbortError') {
+      addMsg('The home server took too long to respond (over 90s). It may be '
+        + 'stuck scanning for devices — try again, or restart the launcher.', 'err');
+    } else {
+      addMsg('Could not reach the home server. This usually means the '
+        + 'launcher window was closed or this page is an old link — reopen '
+        + 'the current link from the launcher window. (' + (err.message || err.name) + ')', 'err');
+    }
   } finally {
+    clearTimeout(timer);
     send.disabled = false;
     input.focus();
     messagesEl.scrollTop = messagesEl.scrollHeight;
