@@ -27,17 +27,34 @@ if errorlevel 1 (
   )
 )
 
-REM Find a Python that actually runs. The bare "python" on Windows is often
-REM a Microsoft Store placeholder that only opens the Store (so "where python"
-REM finds it but it can't run anything) - verify it really works.
+REM Find a Python that actually runs. Two Windows traps to dodge:
+REM  1) the bare "python" is often a Store placeholder stub that only opens
+REM     the Store (so "where python" finds it but it can't run anything).
+REM  2) the *installed* Microsoft Store build of Python runs fine for
+REM     --version but is sandboxed and fails with "Access is denied" when
+REM     this script tries to create a venv with it - skip it and use a
+REM     real install instead.
 set "PY="
-python --version >nul 2>nul && set "PY=python"
-if not defined PY py --version >nul 2>nul && set "PY=py"
+set "PY_PATH="
+for /f "delims=" %%P in ('where python 2^>nul') do if not defined PY_PATH set "PY_PATH=%%P"
+if defined PY_PATH (
+  echo %PY_PATH% | find /I "WindowsApps" >nul
+  if errorlevel 1 python --version >nul 2>nul && set "PY=python"
+)
 if not defined PY (
-  echo   X Python isn't installed yet. The Microsoft Store will open -
-  echo     click Get / Install, wait for it to finish, then double-click
-  echo     this file again.
-  start ms-windows-store://search/?query=Python
+  set "PY_PATH="
+  for /f "delims=" %%P in ('where py 2^>nul') do if not defined PY_PATH set "PY_PATH=%%P"
+  if defined PY_PATH (
+    echo %PY_PATH% | find /I "WindowsApps" >nul
+    if errorlevel 1 py --version >nul 2>nul && set "PY=py"
+  )
+)
+if not defined PY (
+  echo   X A working Python install is needed ^(the Microsoft Store version
+  echo     can't run this app^). A download page will open - run the
+  echo     installer and TICK "Add python.exe to PATH" on the first screen,
+  echo     then double-click this file again.
+  start https://www.python.org/downloads/
   pause
   exit /b 1
 )
@@ -49,10 +66,12 @@ if not exist "%APP_HOME%\.venv\Scripts\python.exe" (
   if not exist "%APP_HOME%\.venv\Scripts\python.exe" (
     echo.
     echo   X Couldn't set up Python in %APP_HOME%\.venv
-    echo     This is usually OneDrive or antivirus blocking the folder. Try:
-    echo     1^) If Connect4SmartHome shows a OneDrive cloud icon in File
-    echo        Explorer, right-click it -^> "Always keep on this device".
-    echo     2^) Briefly pause your antivirus, then double-click this again.
+    echo     Usually antivirus blocking the folder, or a non-standard Python
+    echo     install. Try:
+    echo     1^) Briefly pause your antivirus, then double-click this again.
+    echo     2^) If that doesn't help, reinstall Python from
+    echo        https://www.python.org/downloads/ ^(TICK "Add python.exe to
+    echo        PATH"^) and double-click this again.
     pause
     exit /b 1
   )
