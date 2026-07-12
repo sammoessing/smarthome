@@ -42,12 +42,30 @@ if not defined PY (
   exit /b 1
 )
 
-if not exist "%APP_HOME%\.venv" (
+if not exist "%APP_HOME%\.venv\Scripts\python.exe" (
   echo   Setting up ^(first run only, ~1 minute^)...
+  if exist "%APP_HOME%\.venv" rmdir /s /q "%APP_HOME%\.venv"
   %PY% -m venv "%APP_HOME%\.venv"
+  if not exist "%APP_HOME%\.venv\Scripts\python.exe" (
+    echo.
+    echo   X Couldn't set up Python in %APP_HOME%\.venv
+    echo     This is usually OneDrive or antivirus blocking the folder. Try:
+    echo     1^) If Connect4SmartHome shows a OneDrive cloud icon in File
+    echo        Explorer, right-click it -^> "Always keep on this device".
+    echo     2^) Briefly pause your antivirus, then double-click this again.
+    pause
+    exit /b 1
+  )
 )
 call "%APP_HOME%\.venv\Scripts\activate.bat"
 python -m pip install -q -r "%SRC%\requirements.txt"
+if errorlevel 1 (
+  echo.
+  echo   X Couldn't install required packages ^(see error above^).
+  echo     Check your internet connection and double-click this again.
+  pause
+  exit /b 1
+)
 
 echo.
 echo   Starting! Your browser will open in a moment.
