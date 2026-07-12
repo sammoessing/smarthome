@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Connect4 Home Assistant</title>
+<style>
+  :root {
+    --bg: #F2F3F6; --panel: #FFFFFF; --panel-2: #E9EBF1;
+    --text: #232838; --muted: #6B7488; --line: #D9DDE6;
+    --accent: #A66A10; --accent-soft: #F4E3C4;
+    --ok: #1E7D55; --ok-bg: #DDF0E6; --bad: #B03A34; --bad-bg: #F6E2E0;
+    --user-bubble: #A66A10; --user-text: #FFF9EE;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141926; --panel: #1D2434; --panel-2: #273044;
+      --text: #EAEDF4; --muted: #8E99AF; --line: #303B54;
+      --accent: #F2A63C; --accent-soft: #3A3220;
+      --ok: #46C08A; --ok-bg: #1C3229; --bad: #E4645E; --bad-bg: #3A2523;
+      --user-bubble: #8A5D14; --user-text: #FFF4DE;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex; flex-direction: column; height: 100dvh;
+  }
+  header {
+    display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+    padding: 13px 20px 11px; background: var(--panel);
+    border-bottom: 1px solid var(--line);
+  }
+  .wordmark { margin: 0; font-size: 1.05rem; font-weight: 800; letter-spacing: -0.02em; }
+  .wordmark .four { color: var(--accent); }
+  .tag {
+    font-size: .72rem; font-weight: 600; text-transform: uppercase;
+    letter-spacing: .08em; color: var(--accent);
+    background: var(--accent-soft); border-radius: 999px; padding: 3px 10px;
+  }
+  #real-btn {
+    margin-left: auto; font-size: .78rem; padding: 5px 12px;
+    border-radius: 999px; border: 1px solid var(--accent);
+    background: var(--accent-soft); color: var(--accent); cursor: pointer;
+    text-decoration: none; font-weight: 700;
+  }
+  #key-btn {
+    font-size: .78rem; padding: 5px 12px;
+    border-radius: 999px; border: 1px solid var(--line);
+    background: var(--panel-2); color: var(--muted); cursor: pointer;
+  }
+  #conn {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; font-weight: 600; font-size: .95rem;
+    border-bottom: 1px solid var(--line);
+  }
+  #conn.ok  { color: var(--ok);  background: var(--ok-bg); }
+  #conn.bad { color: var(--bad); background: var(--bad-bg); }
+  #conn.checking { color: var(--muted); background: var(--panel); }
+  #conn .mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 26px; height: 26px; border-radius: 50%; font-size: .95rem;
+    color: #fff; background: var(--muted); flex: none;
+  }
+  #conn.ok .mark { background: var(--ok); }
+  #conn.bad .mark { background: var(--bad); }
+  #conn small { font-weight: 400; color: var(--muted); }
+  main { display: flex; flex: 1; min-height: 0; }
+  #chat { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+  #messages {
+    flex: 1; overflow-y: auto; padding: 20px;
+    display: flex; flex-direction: column; gap: 10px;
+  }
+  .msg { max-width: 76%; padding: 10px 14px; border-radius: 14px; white-space: pre-wrap; overflow-wrap: break-word; }
+  @media (prefers-reduced-motion: no-preference) {
+    .msg { animation: rise .18s ease-out; }
+    @keyframes rise { from { opacity: 0; transform: translateY(4px); } }
+  }
+  .msg.user { align-self: flex-end; background: var(--user-bubble); color: var(--user-text); border-bottom-right-radius: 4px; }
+  .msg.bot  { align-self: flex-start; background: var(--panel); border: 1px solid var(--line); border-bottom-left-radius: 4px; }
+  .msg.err  { align-self: center; background: var(--bad-bg); color: var(--bad); font-size: .85rem; max-width: 90%; }
+  .actions { font-size: .74rem; color: var(--muted); margin: -4px 0 0 6px; }
+  form {
+    display: flex; gap: 10px; padding: 14px 20px;
+    background: var(--panel); border-top: 1px solid var(--line);
+  }
+  input[type="text"], input[type="password"] {
+    flex: 1; padding: 11px 14px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--bg);
+    color: var(--text); font-size: 1rem;
+  }
+  input:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button[type="submit"], .primary {
+    padding: 11px 20px; border-radius: 10px; border: none; cursor: pointer;
+    background: var(--accent); color: var(--panel); font-size: 1rem; font-weight: 600;
+  }
+  button:disabled { opacity: .5; cursor: default; }
+  #devices {
+    width: 288px; overflow-y: auto; background: var(--panel);
+    border-left: 1px solid var(--line); padding: 16px; display: none;
+  }
+  @media (min-width: 840px) { #devices { display: block; } }
+  #devices h2 {
+    margin: 2px 0 12px; font-size: .72rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .09em; color: var(--muted);
+  }
+  .dev { background: var(--panel-2); border-radius: 10px; padding: 9px 12px; margin-bottom: 8px; font-size: .85rem; }
+  .dev .name { font-weight: 600; display: flex; align-items: center; gap: 7px; }
+  .dev .state {
+    color: var(--muted); font-size: .76rem; margin-top: 2px;
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-variant-numeric: tabular-nums;
+  }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.on { background: var(--ok); }
+  #keybar {
+    display: none; gap: 10px; padding: 12px 20px; align-items: center;
+    background: var(--panel); border-bottom: 1px solid var(--line); flex-wrap: wrap;
+  }
+  #keybar.show { display: flex; }
+  #keybar label { font-size: .85rem; color: var(--muted); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1 class="wordmark">🏠 Connect<span class="four">4</span> Home Assistant</h1>
+  <span class="tag">Demo home · Llama 3.1</span>
+  <a id="real-btn" href="https://github.com/sammoessing/smarthome#taking-it-to-any-house-works-on-whatever-wifi-im-on" target="_blank" rel="noopener">Control my real home →</a>
+  <button id="key-btn" type="button">API key…</button>
+</header>
+
+<div id="conn" class="checking">
+  <span class="mark">○</span>
+  <span id="conn-text">Checking connection…</span>
+</div>
+
+<div id="keybar">
+  <label for="key-input">Groq API key (free at console.groq.com — stays in this browser only):</label>
+  <input id="key-input" type="password" placeholder="gsk_…" autocomplete="off">
+  <button class="primary" id="key-save" type="button">Connect</button>
+</div>
+
+<main>
+  <section id="chat">
+    <div id="messages"></div>
+    <form id="form">
+      <input id="input" type="text" placeholder="Tell me what to do…" autocomplete="off" aria-label="Message the home assistant">
+      <button id="send" type="submit">Send</button>
+    </form>
+  </section>
+  <aside id="devices" aria-label="Device states">
+    <h2>Devices</h2>
+    <div id="device-list"></div>
+  </aside>
+</main>
+
+<script>
+'use strict';
+
+// ================= Configuration =================
+const API_BASE = 'https://api.groq.com/openai/v1';
+const MODEL = 'llama-3.1-8b-instant';
+const KEY_STORAGE = 'connect4-groq-key';
+
+// Accept a key passed privately in the URL fragment (#key=gsk_...) so a
+// shared link works on first open; the fragment never reaches any server
+// and is scrubbed from the address bar immediately.
+(function keyFromHash() {
+  const m = location.hash.match(/[#&]key=([^&]+)/);
+  if (m) {
+    localStorage.setItem(KEY_STORAGE, decodeURIComponent(m[1]));
+    try { history.replaceState(null, '', location.pathname + location.search); }
+    catch { location.hash = ''; }
+  }
+})();
+
+let apiKey = localStorage.getItem(KEY_STORAGE) || '';
+
+// ================= The simulated Connect4 home =================
+const home = [
+  { id: 'light-living',  type: 'light',   name: 'Living Room Light',   room: 'living room', power: false, brightness: 100, color: 'warm white' },
+  { id: 'light-kitchen', type: 'light',   name: 'Kitchen Light',       room: 'kitchen',     power: false, brightness: 100, color: 'warm white' },
+  { id: 'light-bedroom', type: 'light',   name: 'Bedroom Light',       room: 'bedroom',     power: false, brightness: 100, color: 'warm white' },
+  { id: 'speaker-living',  type: 'speaker', name: 'Living Room Speaker', room: 'living room', power: false, volume: 30, playing: false, track: null },
+  { id: 'speaker-kitchen', type: 'speaker', name: 'Kitchen Speaker',     room: 'kitchen',     power: false, volume: 30, playing: false, track: null },
+  { id: 'tv-living',  type: 'tv', name: 'Living Room TV', room: 'living room', power: false, volume: 20, channel: null, input: 'hdmi1' },
+  { id: 'tv-bedroom', type: 'tv', name: 'Bedroom TV',     room: 'bedroom',     power: false, volume: 20, channel: null, input: 'hdmi1' },
+];
+
+function findDevice(id) { return home.find(d => d.id === id) || null; }
+
+function applyChanges(device, args, allowed) {
+  for (const [k, v] of Object.entries(args)) {
+    if (k === 'device_id' || v === null || v === undefined) continue;
+    if (!allowed.includes(k)) return { error: `'${k}' is not a valid setting for a ${device.type}.` };
+    if ((k === 'volume' || k === 'brightness') && (typeof v !== 'number' || v < 0 || v > 100)) {
+      return { error: `${k} must be between 0 and 100.` };
+    }
+    device[k] = v;
+  }
+  return { ok: true, device: { ...device } };
+}
+
+// Same tools as the backend app (app/tools.py)
+const TOOLS = [
+  { type: 'function', function: { name: 'list_devices',
+      description: 'List every Connect4 device with its current state. Call this first when you need a device id.',
+      parameters: { type: 'object', properties: {} } } },
+  { type: 'function', function: { name: 'set_light',
+      description: 'Control a Connect4 light: power, brightness, color.',
+      parameters: { type: 'object', properties: {
+        device_id: { type: 'string' }, power: { type: 'boolean' },
+        brightness: { type: 'integer', description: '0-100' },
+        color: { type: 'string' } }, required: ['device_id'] } } },
+  { type: 'function', function: { name: 'control_speaker',
+      description: 'Control a Connect4 speaker: power, volume, playback.',
+      parameters: { type: 'object', properties: {
+        device_id: { type: 'string' }, power: { type: 'boolean' },
+        volume: { type: 'integer', description: '0-100' },
+        playing: { type: 'boolean' }, track: { type: 'string' } }, required: ['device_id'] } } },
+  { type: 'function', function: { name: 'control_tv',
+      description: 'Control a Connect4 TV: power, volume, channel, input.',
+      parameters: { type: 'object', properties: {
+        device_id: { type: 'string' }, power: { type: 'boolean' },
+        volume: { type: 'integer', description: '0-100' },
+        channel: { type: 'string' }, input: { type: 'string' } }, required: ['device_id'] } } },
+];
+
+const TOOL_TYPES = { set_light: 'light', control_speaker: 'speaker', control_tv: 'tv' };
+const TOOL_FIELDS = {
+  set_light: ['power', 'brightness', 'color'],
+  control_speaker: ['power', 'volume', 'playing', 'track'],
+  control_tv: ['power', 'volume', 'channel', 'input'],
+};
+
+function dispatchTool(name, args) {
+  if (name === 'list_devices') return { devices: home.map(d => ({ ...d })) };
+  const expected = TOOL_TYPES[name];
+  if (!expected) return { error: `Unknown tool '${name}'` };
+  const device = findDevice(args.device_id);
+  if (!device) return { error: `No Connect4 device with id '${args.device_id}'` };
+  if (device.type !== expected) {
+    return { error: `Device '${args.device_id}' is a ${device.type}, not a ${expected}. Use the matching tool.` };
+  }
+  return applyChanges(device, args, TOOL_FIELDS[name]);
+}
+
+// ================= LLM chat loop (Groq, OpenAI-compatible) =================
+const SYSTEM_PROMPT = `You are the Connect4 home assistant, a friendly chatbot that controls the user's Connect4 smart home: lights, speakers, and TVs.
+
+Rules:
+- Use the provided tools to inspect and control devices. Call list_devices when you need device ids or the current state.
+- When the user names a room, match it to the right device. If a request is ambiguous, ask which device instead of guessing — unless they clearly mean all of them.
+- When turning media on (playing music, watching TV), also power the device on if it is off.
+- After acting, confirm briefly and naturally what you did. Never invent device state: report only what the tools returned.
+- IMPORTANT — be honest about what this is: this public page controls a SIMULATED demo home only. The user is NOT connected to any real house here, whatever WiFi they are on, and there are no real Sonos or Connect4 devices behind this page. If they ask whether this is connected to their real home, or about Sonos or other real devices, say plainly: "This page only controls the practice home. To control the real house you're in (including Sonos speakers), run the Connect4 app on a computer on that house's WiFi — the double-click launcher in the GitHub repo (sammoessing/smarthome) does it all and auto-discovers Sonos." Never claim or imply a connection to their actual home.
+- You control ONLY this demo Connect4 home. Politely decline anything else, though friendly small talk is fine.`;
+
+const history = [];
+
+async function groqChat(messages) {
+  const resp = await fetch(API_BASE + '/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + apiKey },
+    body: JSON.stringify({ model: MODEL, messages, tools: TOOLS }),
+  });
+  if (!resp.ok) {
+    const body = await resp.text();
+    const err = new Error(`LLM error ${resp.status}: ${body.slice(0, 200)}`);
+    err.status = resp.status;
+    throw err;
+  }
+  return (await resp.json()).choices[0].message;
+}
+
+async function respond(userText) {
+  const convo = [{ role: 'system', content: SYSTEM_PROMPT }, ...history, { role: 'user', content: userText }];
+  const actions = [];
+  for (let round = 0; round < 8; round++) {
+    const message = await groqChat(convo);
+    const calls = message.tool_calls || [];
+    if (!calls.length) return { reply: message.content || '', actions };
+    convo.push(message);
+    for (const call of calls) {
+      let args = {};
+      try { args = JSON.parse(call.function.arguments || '{}'); } catch {}
+      const result = dispatchTool(call.function.name, args);
+      actions.push({ tool: call.function.name, result });
+      convo.push({ role: 'tool', tool_call_id: call.id, content: JSON.stringify(result) });
+    }
+  }
+  return { reply: 'That needed too many steps — could you break it into smaller requests?', actions };
+}
+
+// ================= UI =================
+const messagesEl = document.getElementById('messages');
+const form = document.getElementById('form');
+const input = document.getElementById('input');
+const send = document.getElementById('send');
+const keybar = document.getElementById('keybar');
+const keyInput = document.getElementById('key-input');
+
+function setConn(state, mark, text) {
+  document.getElementById('conn').className = state;
+  document.getElementById('conn').querySelector('.mark').textContent = mark;
+  document.getElementById('conn-text').textContent = text;
+}
+
+function addMsg(text, cls) {
+  const div = document.createElement('div');
+  div.className = 'msg ' + cls;
+  div.textContent = text;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  return div;
+}
+
+function addActions(actions) {
+  const acted = actions.filter(a => a.tool !== 'list_devices' && a.result && a.result.ok);
+  if (!acted.length) return;
+  const div = document.createElement('div');
+  div.className = 'actions';
+  div.textContent = '⚙ ' + acted.map(a => a.result.device.name).join(', ') + ' updated';
+  messagesEl.appendChild(div);
+}
+
+function renderDevices() {
+  const listEl = document.getElementById('device-list');
+  listEl.innerHTML = '';
+  for (const d of home) {
+    const el = document.createElement('div');
+    el.className = 'dev';
+    const extras = [];
+    if (d.type === 'light') extras.push(d.brightness + '%', d.color);
+    if (d.type === 'speaker') extras.push('vol ' + d.volume, d.playing ? '▶ ' + (d.track || 'playing') : '⏸');
+    if (d.type === 'tv') extras.push('vol ' + d.volume, d.channel || d.input);
+    const name = document.createElement('div');
+    name.className = 'name';
+    const dot = document.createElement('span');
+    dot.className = 'dot' + (d.power ? ' on' : '');
+    name.appendChild(dot);
+    name.appendChild(document.createTextNode(d.name));
+    const state = document.createElement('div');
+    state.className = 'state';
+    state.textContent = (d.power ? 'on · ' : 'off · ') + extras.join(' · ');
+    el.appendChild(name);
+    el.appendChild(state);
+    listEl.appendChild(el);
+  }
+}
+
+async function checkConnection() {
+  if (!apiKey) {
+    setConn('bad', '✕', 'Not connected — add your free Groq API key below to start.');
+    keybar.classList.add('show');
+    return false;
+  }
+  setConn('checking', '○', 'Checking connection…');
+  try {
+    const r = await fetch(API_BASE + '/models', { headers: { 'Authorization': 'Bearer ' + apiKey } });
+    if (r.ok) {
+      setConn('ok', '✓', 'Assistant online — controlling the demo home (not a real house)');
+      keybar.classList.remove('show');
+      return true;
+    }
+    setConn('bad', '✕', r.status === 401
+      ? 'That API key was rejected — paste a valid Groq key below.'
+      : 'Connection problem (HTTP ' + r.status + '). Try again in a moment.');
+    keybar.classList.add('show');
+  } catch {
+    setConn('bad', '✕', 'Could not reach the assistant — check your internet connection.');
+  }
+  return false;
+}
+
+document.getElementById('key-btn').addEventListener('click', () => {
+  keybar.classList.toggle('show');
+  keyInput.focus();
+});
+document.getElementById('key-save').addEventListener('click', async () => {
+  apiKey = keyInput.value.trim();
+  if (!apiKey) return;
+  localStorage.setItem(KEY_STORAGE, apiKey);
+  keyInput.value = '';
+  const ok = await checkConnection();
+  if (ok) addMsg("You're connected! Try \"turn on the living room lights\" or \"play some jazz in the kitchen\".", 'bot');
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const text = input.value.trim();
+  if (!text) return;
+  if (!apiKey) { keybar.classList.add('show'); keyInput.focus(); return; }
+  input.value = '';
+  addMsg(text, 'user');
+  send.disabled = true;
+  const thinking = addMsg('…', 'bot');
+  try {
+    const { reply, actions } = await respond(text);
+    thinking.remove();
+    addMsg(reply, 'bot');
+    history.push({ role: 'user', content: text }, { role: 'assistant', content: reply });
+    if (history.length > 20) history.splice(0, history.length - 20);
+    addActions(actions);
+    renderDevices();
+  } catch (err) {
+    thinking.remove();
+    addMsg(String(err.message || err), 'err');
+    if (err.status === 401) { apiKey = ''; localStorage.removeItem(KEY_STORAGE); }
+    checkConnection();
+  } finally {
+    send.disabled = false;
+    input.focus();
+  }
+});
+
+addMsg("Hi! I'm your Connect4 home assistant, running on Llama 3.1 — a real open-source LLM. Heads up: this page controls a practice home with simulated devices, not the house you're in. (To control a real house — Sonos included — run the app from the launcher on that house's WiFi.)\n\nTry: \"turn on the living room lights and make them blue\", \"play jazz in the kitchen\", or just chat.", 'bot');
+renderDevices();
+checkConnection();
+</script>
+</body>
+</html>
